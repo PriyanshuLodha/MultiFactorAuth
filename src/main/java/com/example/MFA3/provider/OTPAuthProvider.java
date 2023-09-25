@@ -24,7 +24,7 @@ public class OTPAuthProvider implements AuthenticationProvider {
 	public Authentication authenticate(Authentication auth) {
 		var user = secretKeyRepo.findByUsername(auth.getName());
 
-		if (user.isPresent()) {
+		if (user!=null) {
 			return new OTPAuthToken(auth.getName(),
 					auth.getCredentials() ,
 					Arrays.asList(() -> "read"));

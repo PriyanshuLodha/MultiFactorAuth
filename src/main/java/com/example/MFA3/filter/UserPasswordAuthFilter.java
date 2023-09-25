@@ -1,6 +1,8 @@
 package com.example.MFA3.filter;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
@@ -8,9 +10,16 @@ import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.transaction.Transactional;
+
+import com.example.MFA3.model.Test;
+import com.example.MFA3.repo.TestRepo;
+import com.example.MFA3.service.TwoFactorAuthService;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -25,8 +34,16 @@ public class UserPasswordAuthFilter extends OncePerRequestFilter {
 	
 	@Autowired AuthenticationManager manager;
 	
-	@Autowired UserSecretKeyRepo userSecretKeyRepo;
-	
+	@Autowired
+	UserSecretKeyRepo userSecretKeyRepo;
+	@Autowired
+	TwoFactorAuthService twoFactorAuthService;
+
+	@Autowired
+	TestRepo repo;
+
+	@Modifying
+	@Transactional
 	@Override
 	protected void doFilterInternal(HttpServletRequest request,
 			HttpServletResponse response,
@@ -47,19 +64,27 @@ public class UserPasswordAuthFilter extends OncePerRequestFilter {
 			
 			//save generated key into db
 			UserSecretKey secretKey = new UserSecretKey();
-			secretKey.setKey((new Random().nextInt(999)*1000)+"");
+			var secret=twoFactorAuthService.generateNewSecret();
+
+			secretKey.setKey(secret);
 			secretKey.setUsername(uname);
-			
 			userSecretKeyRepo.save(secretKey);
-			
+//			Test t = new Test();
+//			t.setUsername("test");
+//			repo.save(t);
 		}
 		else {
 			// through the key 
 			var auth = manager.authenticate(new OTPAuthToken(uname,password));
-			
+			Optional<Test> user=repo.findByUsername(uname);
+			if(user.isEmpty()){
+				return ;
+			}
+
+			}
 			// generate a token
-            response.setHeader("Authorization", UUID.randomUUID().toString());
-		}
+
+
 
 	}
 
